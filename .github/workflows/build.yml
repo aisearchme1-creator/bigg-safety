@@ -1,3 +1,23 @@
+name: Build BiggSafety APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
       - name: Install fixed deps
         run: |
           sudo apt-get update
@@ -11,7 +31,40 @@
           pip install --upgrade pip
           pip install cython==0.29.33 virtualenv buildozer==1.5.0
 
+      - name: Cache Buildozer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.buildozer
+            .buildozer
+          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-${{ runner.os }}-
+
       - name: Clean & Build strict
         run: |
           buildozer android clean || true
-          yes | buildozer -v android debug   # yes prompts skip करेगा
+          yes | buildozer -v android debug
+
+      - name: Detailed Debug - APK Search & Logs
+        if: always()
+        run: |
+          echo "=== Current directory: $(pwd) ==="
+          echo "=== bin/ contents ==="
+          ls -la bin/ 2>/dev/null || echo "bin/ folder नहीं बना!"
+          echo ""
+          echo "=== Searching for .apk files ==="
+          find . -type f -name "*.apk" -exec ls -la {} \; 2>/dev/null || echo "कोई APK नहीं मिला"
+          echo ""
+          echo "=== Last 100 lines of build log ==="
+          tail -n 100 .buildozer/android/platform/build.log 2>/dev/null || echo "build.log नहीं मिला"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BiggSafety-APK
+          path: |
+            bin/*.apk
+            .buildozer/android/platform/build/dists/*/bin/*.apk
+          if-no-files-found: warn
+          retention-days: 90
