@@ -25,4 +25,4 @@ jobs:
         with:
           name: BiggSafety-APK
           path: ${{ steps.buildozer.outputs.filename }}
-          retention-days: 30
+          retention-days: 90
