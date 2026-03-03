@@ -10,52 +10,61 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install system dependencies (fixed for autoconf + clang errors)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq build-essential git ccache autoconf automake libtool unzip openjdk-17-jdk \
-            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev \
-            libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev libffi-dev libssl-dev
+          sudo apt-get install -y -qq build-essential git ccache \
+            autoconf automake libtool unzip openjdk-17-jdk \
+            libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev \
+            zlib1g-dev libffi-dev libssl-dev libncursesw5-dev libtinfo5 libclang-dev
 
-      - name: Install Buildozer with fixed Cython
+      - name: Install Buildozer with fixed Cython (fixes hostpython3 failed)
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install cython==0.29.33 virtualenv buildozer==1.5.0
 
-      - name: Cache Buildozer
+      - name: Cache Buildozer (faster builds)
         uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer
             .buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-${{ runner.os }}-${{ hashFiles('buildozer.spec') }}
+          restore-keys: buildozer-${{ runner.os }}-
 
-      - name: Clean previous builds
+      - name: Clean previous build (important for corrupt cache)
         run: buildozer android clean || true
 
-      - name: Build APK
-        run: buildozer -v android debug
-
-      - name: Debug Info - APK Search & Logs
-        if: always()
+      - name: Build APK (verbose, no retry - fail with error)
         run: |
-          echo "=== pwd ==="
-          pwd
-          echo "=== ls bin/ ==="
-          ls -la bin/ 2>/dev/null || echo "bin/ नहीं बना"
-          echo "=== Find all .apk ==="
-          find . -name "*.apk" -exec ls -la {} \; 2>/dev/null || echo "कोई APK नहीं"
-          echo "=== Last 50 lines of build log ==="
-          tail -n 50 .buildozer/android/platform/build.log 2>/dev/null || echo "log नहीं मिला"
+          yes | buildozer -v android debug  # 'yes' prompts skip करने के लिए
 
-      - name: Upload APK
+      - name: Detailed Debug - APK Search & Build Logs
+        if: always()  # fail पर भी चले
+        run: |
+          echo "=== Current dir: $(pwd) ==="
+          echo "=== bin/ contents ==="
+          ls -la bin/ 2>/dev/null || echo "bin/ folder नहीं बना!"
+          echo ""
+          echo "=== Searching all .apk files ==="
+          find . -type f -name "*.apk" -exec ls -la {} \; || echo "कोई APK नहीं मिला"
+          echo ""
+          echo "=== Check dists folder ==="
+          find .buildozer/android/platform/build/dists -name "*.apk" 2>/dev/null || echo "dists में कुछ नहीं"
+          echo ""
+          echo "=== Last 100 lines of build log (for errors) ==="
+          tail -n 100 .buildozer/android/platform/build.log 2>/dev/null || echo "build.log नहीं मिला"
+
+      - name: Upload APK (if built)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -63,5 +72,6 @@ jobs:
           path: |
             bin/*.apk
             .buildozer/android/platform/build/dists/*/bin/*.apk
+            .buildozer/android/platform/build/dists/*/build/outputs/apk/debug/*.apk
           if-no-files-found: warn
           retention-days: 90
