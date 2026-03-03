@@ -1,4 +1,4 @@
-.github/workflows/build.ymlname: Build APK
+Build APK
 
 on:
   push:
