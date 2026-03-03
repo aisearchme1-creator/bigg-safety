@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/upload-artifact@v4
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -38,7 +38,7 @@ jobs:
           pip install buildozer cython virtualenv
 
       - name: Cache Buildozer
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.buildozer
@@ -50,7 +50,7 @@ jobs:
         run: buildozer -v android debug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BiggSafety-APK
           path: bin/*.apk
