@@ -46,8 +46,15 @@ jobs:
           key: buildozer-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-
 
-      - name: Build APK
-        run: buildozer -v android debug
+      - name: Build APK (with retry)
+        run: |
+          for i in 1 2 3; do
+            echo "=== Build attempt $i ==="
+            buildozer -v android debug && break
+            echo "Attempt $i failed, retrying in 30s..."
+            sleep 30
+            buildozer android clean 2>/dev/null || true
+          done
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
