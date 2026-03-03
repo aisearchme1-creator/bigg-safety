@@ -22,15 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            python3-pip build-essential git \
-            libsdl2-dev libsdl2-image-dev \
-            libsdl2-mixer-dev libsdl2-ttf-dev \
-            libportmidi-dev libswscale-dev \
-            libavformat-dev libavcodec-dev \
-            zlib1g-dev libffi-dev libssl-dev \
-            autoconf automake libtool unzip \
-            openjdk-17-jdk
+          sudo apt-get install -y python3-pip build-essential git libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev libffi-dev libssl-dev autoconf automake libtool unzip openjdk-17-jdk
 
       - name: Install Buildozer
         run: |
@@ -46,17 +38,20 @@ jobs:
           key: buildozer-${{ hashFiles('buildozer.spec') }}
           restore-keys: buildozer-
 
-      - name: Build APK (with retry)
+      - name: Build APK
         run: |
           for i in 1 2 3; do
-            echo "=== Build attempt $i ==="
+            echo "=== Attempt $i ==="
             buildozer -v android debug && break
-            echo "Attempt $i failed, retrying in 30s..."
             sleep 30
-            buildozer android clean 2>/dev/null || true
           done
 
       - name: Find APK
-        run: find . -name "*.apk" 2>/dev/null
+        run: find /home/runner/work -name "*.apk"
 
       - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BiggSafety-APK
+          path: /home/runner/work/**/*.apk
+          retention-days: 30
